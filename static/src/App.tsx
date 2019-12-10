@@ -91,11 +91,10 @@ class App extends React.Component<{}, states> {
                             <Form inline>
                                 <FormGroup className="mb-2 mr-sm-2 mb-sm-0">
                                     <Label for="user-name" className="mr-sm-2">Name : </Label>
-                                    <Input id="user-name" type="text" placeholder={this.state.userName} onChange={e => { this.changeName(e) }} />
+                                    <Input id="user-name" type="text" placeholder={this.state.userName} onChange={e => { this.changeName(e) }} disabled={this.state.room !== "Main"}/>
                                 </FormGroup>
                             </Form>
                         </Col>
-                        <Button color="primary" onClick={() => this.updateName()}>更新</Button>
                     </Row>
                 </header>
                 <Row>
@@ -108,6 +107,7 @@ class App extends React.Component<{}, states> {
                                             return (
                                                 <ListGroupItem
                                                     onClick={() => {
+                                                        this.updateName();
                                                         this.joinRoom(room);
                                                     }}
                                                     action
