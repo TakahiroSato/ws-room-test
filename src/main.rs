@@ -272,7 +272,7 @@ fn main() -> std::io::Result<()> {
             // static resources
             .service(fs::Files::new("/", "static/build/"))
     })
-    .bind("localhost:8080")?
+    .bind("0.0.0.0:8080")?
     .start();
 
     sys.run()
