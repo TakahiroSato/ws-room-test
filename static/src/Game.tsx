@@ -8,6 +8,7 @@ import {
     ListGroupItem,
 } from "reactstrap";
 import WebSocket from "websocket";
+import reversi from "./reversi";
 
 interface props {
     wsClient: WebSocket.w3cwebsocket
@@ -16,6 +17,7 @@ interface props {
 interface states {
     oldListener?: (message: WebSocket.IMessageEvent) => void,
     members?: String[],
+    reversi?: reversi,
 }
 
 class Game extends React.Component<props, states> {
@@ -23,10 +25,14 @@ class Game extends React.Component<props, states> {
         super(props);
         this.state = {
             oldListener: props.wsClient.onmessage,
-            members: []
+            members: [],
+            reversi: new reversi(),
         }
         this.props.wsClient.onmessage = (e) => { this.onMessage(e); };
         this.props.wsClient.send("/members");
+    }
+    componentDidMount() {
+        this.state.reversi?.init();
     }
     onMessage(e: WebSocket.IMessageEvent) {
         const json = (() => {
@@ -59,6 +65,9 @@ class Game extends React.Component<props, states> {
     render() {
         return (
             <Container>
+                <Row>
+                    <canvas id="canvas2d" width="800px" height="800px"></canvas>
+                </Row>
                 <Row>
                     <ListGroup>
                         {this.state.members?.map(member => {

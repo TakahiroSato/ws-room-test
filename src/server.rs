@@ -7,6 +7,8 @@ use rand::{self, rngs::ThreadRng, Rng};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
+use crate::reversi::Reversi;
+
 /// Chat server sends this messages to session
 #[derive(Message)]
 pub struct Message(pub String);
@@ -61,6 +63,7 @@ struct User {
 pub struct Server {
     sessions: HashMap<usize, User>,
     rooms: HashMap<String, HashSet<usize>>,
+    reversies: HashMap<String, Reversi>,
     rng: ThreadRng,
 }
 
@@ -68,15 +71,18 @@ impl Default for Server {
     fn default() -> Server {
         // default room
         let mut rooms = HashMap::new();
+        let mut reversies = HashMap::new();
         rooms.insert("Main".to_owned(), HashSet::new());
         let default_rooms = ["room1", "room2", "room3", "room4", "room5"];
         for room in &default_rooms {
             rooms.insert(room.to_string(), HashSet::new());
+            reversies.insert(room.to_string(), Reversi::new());
         }
 
         Server {
             sessions: HashMap::new(),
             rooms,
+            reversies,
             rng: rand::thread_rng(),
         }
     }
@@ -251,5 +257,28 @@ impl Handler<GetMemberNames> for Server {
         }
         ret.sort();
         MessageResult(ret)
+    }
+}
+
+pub struct Start {
+    pub room: String,
+}
+impl actix::Message for Start {
+    type Result = Result<Vec<Vec<u8>>, String>;
+}
+impl Handler<Start> for Server {
+    type Result = MessageResult<Start>;
+
+    fn handle(&mut self, msg: Start, _: &mut Context<Self>) -> Self::Result {
+        if let Some(sessions) = self.rooms.get(&msg.room) {
+            if sessions.len() < 2 {
+                return MessageResult(Err("not enough members".to_owned()));
+            }
+        }
+        if let Some(reversi) = self.reversies.get(&msg.room) {
+            reversi.init();
+            return MessageResult(Ok(reversi.get_states()));
+        }
+        MessageResult(Err("something wrong".to_owned()))
     }
 }

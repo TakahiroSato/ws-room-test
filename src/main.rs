@@ -7,7 +7,7 @@ use actix_web_actors::ws;
 
 use serde_json::json;
 
-mod server;
+use ws_room_test::server;
 
 /// How often hertbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -183,6 +183,35 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
                                                 "cmd": "members",
                                                 "data": &members
                                             }).to_string());
+                                        }
+                                        _ => println!("Something is wrong"),
+                                    }
+                                    fut::ok(())
+                                })
+                                .wait(ctx)
+                        }
+                        "/start" => {
+                            self.addr.send(server::Start { room: self.room.clone () })
+                                .into_actor(self)
+                                .then(|res, _, ctx| {
+                                    match res {
+                                        Ok(r) => {
+                                            match r {
+                                                Ok(r) => {
+                                                    ctx.text(json!({
+                                                        "cmd": "start",
+                                                        "result": "success",
+                                                        "data": r
+                                                    }).to_string());
+                                                }
+                                                Err(r) => {
+                                                    ctx.text(json!({
+                                                        "cmd": "start",
+                                                        "result": "failed",
+                                                        "data": r
+                                                    }).to_string());
+                                                }
+                                            }
                                         }
                                         _ => println!("Something is wrong"),
                                     }
