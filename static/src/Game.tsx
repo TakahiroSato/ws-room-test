@@ -18,6 +18,8 @@ interface states {
     oldListener?: (message: WebSocket.IMessageEvent) => void,
     members?: String[],
     reversi?: reversi,
+    player1?: String,
+    player2?: String,
 }
 
 class Game extends React.Component<props, states> {
@@ -27,12 +29,19 @@ class Game extends React.Component<props, states> {
             oldListener: props.wsClient.onmessage,
             members: [],
             reversi: new reversi(),
+            player1: "",
+            player2: "",
         }
         this.props.wsClient.onmessage = (e) => { this.onMessage(e); };
         this.props.wsClient.send("/members");
+        this.updatePlayers();
     }
     componentDidMount() {
         this.state.reversi?.init();
+        this.state.reversi?.addMouseDownEvent((e: Event) => {
+            e = e as MouseEvent;
+            console.log(e);
+        })
     }
     onMessage(e: WebSocket.IMessageEvent) {
         const json = (() => {
@@ -47,11 +56,27 @@ class Game extends React.Component<props, states> {
             switch (json.cmd) {
                 case 'members': {
                     this.setState({ members: json.data });
+                    break;
+                }
+                case 'registered_player1' :{
+                    this.setState({ player1: json.data });
+                    break;
+                }
+                case 'registered_player2' :{
+                    this.setState({ player2: json.data });
+                    break;
+                }
+                case 'player' :{
+                    if (json.sub_cmd === 'get') {
+                        if (json.data.p === 1) this.setState({ player1: json.data.data });
+                        if (json.data.p === 2) this.setState({ player2: json.data.data });
+                    }
                 }
             }
         } else {
             if (e.data === "Someone connected" || e.data === "Someone disconnected") {
                 this.props.wsClient.send("/members");
+                this.updatePlayers();
             }
             console.log(json);
         }
@@ -62,11 +87,23 @@ class Game extends React.Component<props, states> {
         }
         this.props.wsClient.send("/join Main")
     }
+    registPlayer(num: number) {
+        this.props.wsClient.send(`/player${num} regist`);
+    }
+    updatePlayers() {
+        this.props.wsClient.send("/player1 get");
+        this.props.wsClient.send("/player2 get");
+    }
     render() {
         return (
             <Container>
                 <Row>
-                    <canvas id="canvas2d" width="800px" height="800px"></canvas>
+                    <Col>p1 : {this.state.player1 ? this.state.player1 : <Button onClick={() => this.registPlayer(1)}>regist</Button>}</Col>
+                    <Col>p2 : {this.state.player2 ? this.state.player2 : <Button onClick={() => this.registPlayer(2)}>regist</Button>}</Col>
+                    <Col><Button color="primary" onClick={() => console.log("start")}>start</Button></Col>
+                </Row>
+                <Row style={{ paddingTop: "10px" }}>
+                    <canvas id="canvas2d" width="60px" height="60px"></canvas>
                 </Row>
                 <Row>
                     <ListGroup>

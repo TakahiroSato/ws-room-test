@@ -14,10 +14,8 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-//const SEND_STATE_INTERVAL: Duration = Duration::from_secs(5);
-
 /// Entry point for our route
-fn chat_route(
+fn ws_route(
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::Server>>,
@@ -60,7 +58,7 @@ impl Actor for WsSession {
 
         //self.send_state(ctx);
 
-        // register self in chat server. `AsyncContext::wait` register
+        // register self in server. `AsyncContext::wait` register
         // future within context, but context waits until this future resolves
         // before processing any other events.
         // HttpContext::state() is instance of WsSessionState, state is shared
@@ -109,7 +107,7 @@ impl WsSession {
         );
     }
     fn list(&mut self, ctx: &mut ws::WebsocketContext<Self>) {
-        // Send ListRooms message to chat server and wait for
+        // Send ListRooms message to server and wait for
         // response
         println!("List rooms");
         self.addr
@@ -198,13 +196,12 @@ impl WsSession {
                 match res {
                     Ok(r) => {
                         let json = match r {
-                            Ok(r) => json!({
-                                "cmd": "start",
-                                "reulst": "success",
-                                "data": r
+                            Ok(_) => json!({
+                                "cmd": "start_result",
+                                "result": "success",
                             }),
                             Err(r) => json!({
-                                "cmd": "start",
+                                "cmd": "start_result",
                                 "result": "failed",
                                 "data": r,
                             }),
@@ -216,6 +213,48 @@ impl WsSession {
                 fut::ok(())
             })
             .wait(ctx);
+    }
+    fn player(&mut self, v: Vec<&str>, p: server::Player, ctx: &mut ws::WebsocketContext<Self>) {
+        if v.len() == 2 {
+            match v[1] {
+                "get" => {
+                    self.addr
+                        .send(server::GetPlayer {
+                            room: self.room.clone(),
+                            player: p.clone(),
+                        })
+                        .into_actor(self)
+                        .then(move |res, _, ctx| {
+                            match res {
+                                Ok(r) => {
+                                    ctx.text(
+                                        json!({
+                                            "cmd": "player",
+                                            "sub_cmd": "get",
+                                            "data": json!({
+                                                "p": p.clone() as usize,
+                                                "data": r
+                                            }),
+                                        })
+                                        .to_string(),
+                                    );
+                                }
+                                _ => println!("Something is wrong"),
+                            }
+                            fut::ok(())
+                        })
+                        .wait(ctx);
+                }
+                "regist" => {
+                    self.addr.do_send(server::RegistPlayer {
+                        room: self.room.clone(),
+                        id: self.id,
+                        player: p,
+                    });
+                }
+                _ => println!("command required"),
+            }
+        }
     }
 }
 
@@ -243,6 +282,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
                         "/name" => self.name(v, ctx),
                         "/members" => self.members(ctx),
                         "/start" => self.start(ctx),
+                        "/player1" => self.player(v, server::Player::One, ctx),
+                        "/player2" => self.player(v, server::Player::Two, ctx),
                         _ => ctx.text(format!("!!! unknown command: {:?}", m)),
                     }
                 } else {
@@ -251,7 +292,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
                     } else {
                         m.to_owned()
                     };
-                    // send message to chat server
+                    // send message to server
                     self.addr.do_send(server::ClientMessage {
                         id: self.id,
                         msg,
@@ -279,7 +320,7 @@ impl WsSession {
                 // heartbeat timed out
                 println!("Websocket Client heartbeat failed, disconnecting!");
 
-                // notify chat server
+                // notify server
                 act.addr.do_send(server::Disconnect { id: act.id });
 
                 // stop actor
@@ -292,15 +333,6 @@ impl WsSession {
             ctx.ping("");
         });
     }
-
-    // fn send_state(&self, ctx: &mut ws::WebsocketContext<Self>) {
-    //     ctx.run_interval(SEND_STATE_INTERVAL, |act, ctx| {
-    //         ctx.text(json!({
-    //             "cmd": "state",
-    //             "room": act.room
-    //         }).to_string());
-    //     });
-    // }
 }
 
 fn main() -> std::io::Result<()> {
@@ -321,7 +353,7 @@ fn main() -> std::io::Result<()> {
                     .finish()
             })))
             // websocket
-            .service(web::resource("/ws/").to(chat_route))
+            .service(web::resource("/ws/").to(ws_route))
             // static resources
             .service(fs::Files::new("/", "static/build/"))
     })

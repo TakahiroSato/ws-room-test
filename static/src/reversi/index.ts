@@ -1,4 +1,4 @@
-import { c2d, init as c2dInit } from "./util";
+import { event, c2d, init as c2dInit } from "./util";
 import reversi from "./reversi";
 
 export default class {
@@ -8,6 +8,8 @@ export default class {
     }
     public init() {
         c2dInit();
+        event.init();
+        event.removeMouseDownEvents();
         this.reversi.setState([
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
@@ -26,5 +28,8 @@ export default class {
             requestAnimationFrame(animation);
         };
         requestAnimationFrame(animation);
+    }
+    public addMouseDownEvent(callBack: EventListener) {
+        this.reversi.addMouseDownEvent(callBack);
     }
 }

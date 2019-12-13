@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct States {
@@ -14,17 +14,19 @@ impl States {
 
 #[derive(Debug)]
 pub struct Reversi {
-    pub player1_id: RefCell<String>,
-    pub player2_id: RefCell<String>,
+    pub player1_id: Cell<usize>,
+    pub player2_id: Cell<usize>,
     pub states: RefCell<States>,
 }
 
 impl Reversi {
     pub fn new() -> Self {
         Self {
-            player1_id: RefCell::new("".to_owned()),
-            player2_id: RefCell::new("".to_owned()),
-            states: RefCell::new(States { states: vec![vec![]] }),
+            player1_id: Cell::new(0),
+            player2_id: Cell::new(0),
+            states: RefCell::new(States {
+                states: vec![vec![]],
+            }),
         }
     }
 
@@ -43,14 +45,14 @@ impl Reversi {
         });
     }
 
-    pub fn set_disc(&self, id: &str, _x: usize, _y: usize) {
-        let id1 = self.player1_id.borrow();
-        let id2 = self.player2_id.borrow();
+    pub fn set_disc(&self, id: usize, _x: usize, _y: usize) {
+        let id1 = self.player1_id.get();
+        let id2 = self.player2_id.get();
         let mut disc = 0;
-        if id == *id1 {
+        if id == id1 {
             disc = 1;
         }
-        if id == *id2 {
+        if id == id2 {
             disc = 2;
         }
         if disc != 0 {
@@ -70,17 +72,19 @@ impl Reversi {
 mod tests {
     use super::Reversi;
     use super::States;
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
 
     #[test]
     fn reversi() {
         let r = Reversi {
-            player1_id: RefCell::new("player1".to_owned()),
-            player2_id: RefCell::new("id2".to_owned()),
-            states: RefCell::new(States { states: vec![vec![]] }),
+            player1_id: Cell::new(1),
+            player2_id: Cell::new(2),
+            states: RefCell::new(States {
+                states: vec![vec![]],
+            }),
         };
         r.init();
-        r.set_disc("id2", 1, 1);
-        r.set_disc("player1", 2, 1);
+        r.set_disc(2, 1, 1);
+        r.set_disc(1, 2, 1);
     }
 }

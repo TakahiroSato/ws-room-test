@@ -1,5 +1,5 @@
 import { vec2 } from "@takahiro_sato/canvas2d";
-import {c2d, init as c2dInit } from "./util";
+import {event, c2d, init as c2dInit } from "./util";
 
 enum state {
   none = 0,
@@ -48,6 +48,11 @@ export default class _reversi {
     if (!c2d) {
         c2dInit();
     }
+  }
+  public addMouseDownEvent(callBack: EventListener) {
+    event.addMouseDownEvent((e: Event) => {
+        callBack(e);
+    });
   }
   public setState(states: number[][]) {
       this._states = states;

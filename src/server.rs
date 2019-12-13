@@ -4,6 +4,8 @@
 
 use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
+use serde::Serialize;
+use serde_json::json;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
@@ -101,6 +103,24 @@ impl Server {
             }
         }
     }
+
+    fn get_user_name(&self, id: usize) -> String {
+        if let Some(user) = self.sessions.get(&id) {
+            return user.name.borrow_mut().clone();
+        }
+        "".to_owned()
+    }
+
+    fn unregist_reversi_player(&self, id: usize) {
+        for (_, reversi) in self.reversies.iter() {
+            if reversi.player1_id.get() == id {
+                reversi.player1_id.set(0);
+            }
+            if reversi.player2_id.get() == id {
+                reversi.player2_id.set(0);
+            }
+        }
+    }
 }
 
 /// Make actor from `Server`
@@ -158,6 +178,8 @@ impl Handler<Disconnect> for Server {
                 }
             }
         }
+        self.unregist_reversi_player(msg.id);
+
         // send message to other users
         for room in rooms {
             self.send_message(&room, "Someone disconnected", 0);
@@ -208,6 +230,8 @@ impl Handler<Join> for Server {
                 rooms.push(n.to_owned());
             }
         }
+        self.unregist_reversi_player(id);
+
         // send message to other users
         for room in rooms {
             self.send_message(&room, "Someone disconnected", 0);
@@ -264,7 +288,7 @@ pub struct Start {
     pub room: String,
 }
 impl actix::Message for Start {
-    type Result = Result<Vec<Vec<u8>>, String>;
+    type Result = Result<String, String>;
 }
 impl Handler<Start> for Server {
     type Result = MessageResult<Start>;
@@ -276,9 +300,92 @@ impl Handler<Start> for Server {
             }
         }
         if let Some(reversi) = self.reversies.get(&msg.room) {
+            if reversi.player1_id.get() == 0 || reversi.player2_id.get() == 0 {
+                return MessageResult(Err("please regeist player1 and player2".to_owned()));
+            }
             reversi.init();
-            return MessageResult(Ok(reversi.get_states()));
+            self.send_message(
+                &msg.room,
+                &json!({
+                    "cmd": "start",
+                    "data": reversi.get_states()
+                })
+                .to_string(),
+                0,
+            );
+            return MessageResult(Ok("success".to_owned()));
         }
         MessageResult(Err("something wrong".to_owned()))
+    }
+}
+
+#[derive(Serialize, Clone)]
+pub enum Player {
+    One = 1,
+    Two = 2,
+}
+
+#[derive(Message)]
+#[rtype(String)]
+pub struct GetPlayer {
+    pub room: String,
+    pub player: Player,
+}
+impl Handler<GetPlayer> for Server {
+    type Result = String;
+
+    fn handle(&mut self, msg: GetPlayer, _: &mut Context<Self>) -> Self::Result {
+        if let Some(reversi) = self.reversies.get(&msg.room) {
+            return match msg.player {
+                Player::One => self.get_user_name(reversi.player1_id.get()),
+                Player::Two => self.get_user_name(reversi.player2_id.get()),
+            };
+        }
+        "".to_owned()
+    }
+}
+
+#[derive(Message)]
+pub struct RegistPlayer {
+    pub room: String,
+    pub id: usize,
+    pub player: Player,
+}
+impl Handler<RegistPlayer> for Server {
+    type Result = ();
+
+    fn handle(&mut self, msg: RegistPlayer, _: &mut Context<Self>) -> Self::Result {
+        if let Some(reversi) = self.reversies.get(&msg.room) {
+            match msg.player {
+                Player::One => {
+                    if reversi.player1_id.get() == 0 && msg.id != reversi.player2_id.get() {
+                        reversi.player1_id.set(msg.id);
+                        self.send_message(
+                            &msg.room,
+                            &json!({
+                                "cmd": "registered_player1",
+                                "data": self.get_user_name(msg.id),
+                            })
+                            .to_string(),
+                            0,
+                        );
+                    }
+                }
+                Player::Two => {
+                    if reversi.player2_id.get() == 0 && msg.id != reversi.player1_id.get() {
+                        reversi.player2_id.set(msg.id);
+                        self.send_message(
+                            &msg.room,
+                            &json!({
+                                "cmd": "registered_player2",
+                                "data": self.get_user_name(msg.id),
+                            })
+                            .to_string(),
+                            0,
+                        );
+                    }
+                }
+            }
+        }
     }
 }

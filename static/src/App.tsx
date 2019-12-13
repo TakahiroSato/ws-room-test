@@ -65,12 +65,13 @@ class App extends React.Component<{}, states> {
         }
     }
     componentDidUpdate(prevProps: any) {
-
+        console.log("App:update");
     }
     updateRooms() {
         wsClient.send('/list');
     }
     changeName(e: React.ChangeEvent<HTMLInputElement>) {
+        console.log("changeName");
         this.setState({ userName: e.target.value });
     }
     updateName() {
