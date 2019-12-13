@@ -1,5 +1,5 @@
 import { vec2 } from "@takahiro_sato/canvas2d";
-import {event, c2d, init as c2dInit } from "./util";
+import { c2d, init as c2dInit } from "./util";
 
 enum state {
   none = 0,
@@ -21,12 +21,12 @@ class disc {
   public draw() {
     const color = this._color === "black" ? "#000000" : "#ffffff";
     if (c2d) {
-        c2d.fillCircle({
-          cx: this.x + this.r,
-          cy: this.y + this.r,
-          r: this.r,
-          color: color
-        });
+      c2d.fillCircle({
+        cx: this.x + this.r,
+        cy: this.y + this.r,
+        r: this.r,
+        color: color
+      });
     }
   }
 }
@@ -46,16 +46,21 @@ export default class _reversi {
       }
     }
     if (!c2d) {
-        c2dInit();
+      c2dInit();
     }
   }
-  public addMouseDownEvent(callBack: EventListener) {
-    event.addMouseDownEvent((e: Event) => {
-        callBack(e);
-    });
+  public getPositionByScreenXY(x: number, y: number): {x: number, y: number} | null {
+    if (x >= 0 && x <= c2d.width && y >= 0 && y <= c2d.height) {
+        return {
+            x: Math.floor(x / (c2d.width/this._width)),
+            y: Math.floor(y / (c2d.height/this._height))
+        }
+    } else {
+        return null;
+    }
   }
   public setState(states: number[][]) {
-      this._states = states;
+    this._states = states;
   }
   public draw() {
     if (!c2d) return;
@@ -81,18 +86,18 @@ export default class _reversi {
   }
   private drawDiscs() {
     if (!c2d) return;
-    const r = (c2d.width / this._width)/2;
+    const r = c2d.width / this._width / 2;
     for (let y = 0; y < this._height; y++) {
       for (let x = 0; x < this._width; x++) {
         switch (this._states[y][x]) {
-            case state.black:
-                (new disc("black", x*r*2, y*r*2, r)).draw();
-                break;
-            case state.white:
-                (new disc("white", x*r*2, y*r*2, r)).draw();
-                break;
-            default:
-                break;
+          case state.black:
+            new disc("black", x * r * 2, y * r * 2, r).draw();
+            break;
+          case state.white:
+            new disc("white", x * r * 2, y * r * 2, r).draw();
+            break;
+          default:
+            break;
         }
       }
     }

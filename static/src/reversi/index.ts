@@ -29,7 +29,12 @@ export default class {
         };
         requestAnimationFrame(animation);
     }
-    public addMouseDownEvent(callBack: EventListener) {
-        this.reversi.addMouseDownEvent(callBack);
+    public getPositionByMouseDown(listener: (obj: {x: number, y: number}) => any) {
+        event.addMouseDownEvent((e: MouseEvent) => {
+            const pos = this.reversi.getPositionByScreenXY(e.offsetX, e.offsetY);
+            if (pos) {
+                listener(pos);
+            }
+        })
     }
 }

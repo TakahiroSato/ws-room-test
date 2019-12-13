@@ -9,11 +9,13 @@ export enum keyCode {
   F12 = 123
 }
 
+export type MouseEevntListener = (e: MouseEvent) => any;
+
 class _event {
   public keyDownEventListeners: { key: keyCode; listener: EventListener }[];
-  private mouseDownEventListeners: EventListener[];
-  private mouseMoveEventListeners: EventListener[];
-  private mouseUpEventListeners: EventListener[];
+  private mouseDownEventListeners: MouseEevntListener[];
+  private mouseMoveEventListeners: MouseEevntListener[];
+  private mouseUpEventListeners: MouseEevntListener[];
   constructor() {
     this.keyDownEventListeners = [];
     this.mouseDownEventListeners = [];
@@ -22,9 +24,9 @@ class _event {
     this.init();
   }
   private _keyDownListenerBody?: (e: KeyboardEvent) => any;
-  private _mouseDownListenerBody?: (e: MouseEvent) => any;
-  private _mouseMoveListenerBody?: (e: MouseEvent) => any;
-  private _mouseUpListenerBody?: (e: MouseEvent) => any;
+  private _mouseDownListenerBody?: MouseEevntListener;
+  private _mouseMoveListenerBody?: MouseEevntListener;
+  private _mouseUpListenerBody?: MouseEevntListener;
   private _removeAllEventListener() {
     if (this._keyDownListenerBody)
       window.removeEventListener("keydown", this._keyDownListenerBody);
@@ -65,13 +67,13 @@ class _event {
       canvas.addEventListener("mouseup", this._mouseUpListenerBody);
     }
   }
-  public addMouseDownEvent(listener: EventListener) {
+  public addMouseDownEvent(listener: MouseEevntListener) {
     this.mouseDownEventListeners.push(listener);
   }
-  public addMouseMoveEvent(listener: EventListener) {
+  public addMouseMoveEvent(listener: MouseEevntListener) {
     this.mouseMoveEventListeners.push(listener);
   }
-  public addMouseUpEvent(listener: EventListener) {
+  public addMouseUpEvent(listener: MouseEevntListener) {
     this.mouseUpEventListeners.push(listener);
   }
   public removeMouseDownEvents() {

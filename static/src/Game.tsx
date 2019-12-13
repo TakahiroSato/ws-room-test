@@ -38,9 +38,8 @@ class Game extends React.Component<props, states> {
     }
     componentDidMount() {
         this.state.reversi?.init();
-        this.state.reversi?.addMouseDownEvent((e: Event) => {
-            e = e as MouseEvent;
-            console.log(e);
+        this.state.reversi?.getPositionByMouseDown((pos: {x: number, y: number}) => {
+            console.table(pos);
         })
     }
     onMessage(e: WebSocket.IMessageEvent) {
@@ -103,7 +102,7 @@ class Game extends React.Component<props, states> {
                     <Col><Button color="primary" onClick={() => console.log("start")}>start</Button></Col>
                 </Row>
                 <Row style={{ paddingTop: "10px" }}>
-                    <canvas id="canvas2d" width="60px" height="60px"></canvas>
+                    <canvas id="canvas2d" width="600px" height="600px"></canvas>
                 </Row>
                 <Row>
                     <ListGroup>
