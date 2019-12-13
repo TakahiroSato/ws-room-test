@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn reversi() {
-        let mut r = Reversi {
+        let r = Reversi {
             player1_id: RefCell::new("player1".to_owned()),
             player2_id: RefCell::new("id2".to_owned()),
             states: RefCell::new(States { states: vec![vec![]] }),

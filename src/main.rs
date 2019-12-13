@@ -98,6 +98,127 @@ impl Handler<server::Message> for WsSession {
     }
 }
 
+impl WsSession {
+    fn room(&mut self, ctx: &mut ws::WebsocketContext<Self>) {
+        ctx.text(
+            json!({
+                "cmd": "room",
+                "data": self.room
+            })
+            .to_string(),
+        );
+    }
+    fn list(&mut self, ctx: &mut ws::WebsocketContext<Self>) {
+        // Send ListRooms message to chat server and wait for
+        // response
+        println!("List rooms");
+        self.addr
+            .send(server::ListRooms)
+            .into_actor(self)
+            .then(|res, _, ctx| {
+                match res {
+                    Ok(rooms) => {
+                        ctx.text(
+                            json!({
+                                "cmd": "list",
+                                "data": &rooms
+                            })
+                            .to_string(),
+                        );
+                    }
+                    _ => println!("Something is wrong"),
+                }
+                fut::ok(())
+            })
+            .wait(ctx)
+        // .wait(ctx) pauses all events in context,
+        // so actor wont receive any new message until it get list
+        // of rooms back
+    }
+    fn join(&mut self, v: Vec<&str>, ctx: &mut ws::WebsocketContext<Self>) {
+        if v.len() == 2 {
+            self.room = v[1].to_owned();
+            self.addr.do_send(server::Join {
+                id: self.id,
+                name: self.room.clone(),
+            });
+
+            ctx.text(
+                json!({
+                    "cmd": "join",
+                    "data": self.room.clone(),
+                })
+                .to_string(),
+            );
+        } else {
+            ctx.text("!!! room name is required");
+        }
+    }
+    fn name(&mut self, v: Vec<&str>, ctx: &mut ws::WebsocketContext<Self>) {
+        if v.len() == 2 {
+            self.name = Some(v[1].to_owned());
+            self.addr.do_send(server::SetName {
+                id: self.id,
+                new_name: self.name.clone().unwrap_or("名無し".to_owned()),
+            });
+        } else {
+            ctx.text("!!! name is required");
+        }
+    }
+    fn members(&mut self, ctx: &mut ws::WebsocketContext<Self>) {
+        self.addr
+            .send(server::GetMemberNames {
+                room: self.room.clone(),
+            })
+            .into_actor(self)
+            .then(|res, _, ctx| {
+                match res {
+                    Ok(members) => {
+                        ctx.text(
+                            json!({
+                                "cmd": "members",
+                                "data": &members
+                            })
+                            .to_string(),
+                        );
+                    }
+                    _ => println!("Something is wrong"),
+                }
+                fut::ok(())
+            })
+            .wait(ctx);
+    }
+    fn start(&mut self, ctx: &mut ws::WebsocketContext<Self>) {
+        self.addr
+            .send(server::Start {
+                room: self.room.clone(),
+            })
+            .into_actor(self)
+            .then(|res, _, ctx| {
+                match res {
+                    Ok(r) => {
+                        let json = match r {
+                            Ok(r) => json!({
+                                "cmd": "start",
+                                "reulst": "success",
+                                "data": r
+                            }),
+                            Err(r) => json!({
+                                "cmd": "start",
+                                "result": "failed",
+                                "data": r,
+                            }),
+                        };
+                        ctx.text(json.to_string());
+                    }
+                    _ => println!("Something is wrong"),
+                }
+                fut::ok(())
+            })
+            .wait(ctx);
+    }
+}
+
 /// WebSocket message handler
 impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
@@ -116,109 +237,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
                 if m.starts_with('/') {
                     let v: Vec<&str> = m.splitn(2, ' ').collect();
                     match v[0] {
-                        "/room" => {
-                            ctx.text(json!({
-                                "cmd": "room",
-                                "data": self.room
-                            }).to_string());
-                        }
-                        "/list" => {
-                            // Send ListRooms message to chat server and wait for
-                            // response
-                            println!("List rooms");
-                            self.addr
-                                .send(server::ListRooms)
-                                .into_actor(self)
-                                .then(|res, _, ctx| {
-                                    match res {
-                                        Ok(rooms) => {
-                                            ctx.text(json!({
-                                                "cmd": "list",
-                                                "data": &rooms
-                                            }).to_string());
-                                        }
-                                        _ => println!("Something is wrong"),
-                                    }
-                                    fut::ok(())
-                                })
-                                .wait(ctx)
-                                // .wait(ctx) pauses all events in context,
-                                // so actor wont receive any new message until it get list
-                                // of rooms back
-                        }
-                        "/join" => {
-                            if v.len() == 2 {
-                                self.room = v[1].to_owned();
-                                self.addr.do_send(server::Join {
-                                    id: self.id,
-                                    name: self.room.clone(),
-                                });
-
-                                ctx.text(json!({
-                                    "cmd": "join",
-                                    "data": self.room.clone(),
-                                }).to_string());
-                            } else {
-                                ctx.text("!!! room name is required");
-                            }
-                        }
-                        "/name" => {
-                            if v.len() == 2 {
-                                self.name = Some(v[1].to_owned());
-                                self.addr.do_send(server::SetName {
-                                    id: self.id,
-                                    new_name: self.name.clone().unwrap_or("名無し".to_owned()),
-                                });
-                            } else {
-                                ctx.text("!!! name is required");
-                            }
-                        }
-                        "/members" => {
-                            self.addr.send(server::GetMemberNames { room: self.room.clone() })
-                                .into_actor(self)
-                                .then(|res, _, ctx| {
-                                    match res {
-                                        Ok(members) => {
-                                            ctx.text(json!({
-                                                "cmd": "members",
-                                                "data": &members
-                                            }).to_string());
-                                        }
-                                        _ => println!("Something is wrong"),
-                                    }
-                                    fut::ok(())
-                                })
-                                .wait(ctx)
-                        }
-                        "/start" => {
-                            self.addr.send(server::Start { room: self.room.clone () })
-                                .into_actor(self)
-                                .then(|res, _, ctx| {
-                                    match res {
-                                        Ok(r) => {
-                                            match r {
-                                                Ok(r) => {
-                                                    ctx.text(json!({
-                                                        "cmd": "start",
-                                                        "result": "success",
-                                                        "data": r
-                                                    }).to_string());
-                                                }
-                                                Err(r) => {
-                                                    ctx.text(json!({
-                                                        "cmd": "start",
-                                                        "result": "failed",
-                                                        "data": r
-                                                    }).to_string());
-                                                }
-                                            }
-                                        }
-                                        _ => println!("Something is wrong"),
-                                    }
-                                    fut::ok(())
-                                })
-                                .wait(ctx)
-                        }
+                        "/room" => self.room(ctx),
+                        "/list" => self.list(ctx),
+                        "/join" => self.join(v, ctx),
+                        "/name" => self.name(v, ctx),
+                        "/members" => self.members(ctx),
+                        "/start" => self.start(ctx),
                         _ => ctx.text(format!("!!! unknown command: {:?}", m)),
                     }
                 } else {
@@ -246,7 +270,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
 
 impl WsSession {
     /// helper method that sends ping to client every second
-    /// 
+    ///
     /// also this method checks hertbeats from client
     fn hb(&self, ctx: &mut ws::WebsocketContext<Self>) {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
@@ -308,7 +332,7 @@ fn main() -> std::io::Result<()> {
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
     #[test]
     fn test() {
         let rooms = ["room1", "room2", "room3"];
