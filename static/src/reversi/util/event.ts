@@ -1,4 +1,4 @@
-import { canvasId } from "./c2d";
+import context from "./c2d";
 
 export enum keyCode {
   space = 32,
@@ -30,7 +30,7 @@ class _event {
   private _removeAllEventListener() {
     if (this._keyDownListenerBody)
       window.removeEventListener("keydown", this._keyDownListenerBody);
-    const canvas = document.getElementById(canvasId);
+    const canvas = context.canvasId ? document.getElementById(context.canvasId) : null;
     if (canvas) {
       if (this._mouseDownListenerBody)
         canvas.removeEventListener("mousedown", this._mouseDownListenerBody);
@@ -60,7 +60,7 @@ class _event {
       this.mouseUpEventListeners.map(l => l(e));
     };
     window.addEventListener("keydown", this._keyDownListenerBody);
-    const canvas = document.getElementById(canvasId);
+    const canvas = context.canvasId ? document.getElementById(context.canvasId) : null;
     if (canvas) {
       canvas.addEventListener("mousedown", this._mouseDownListenerBody);
       canvas.addEventListener("mousemove", this._mouseMoveListenerBody);

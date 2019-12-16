@@ -1,15 +1,14 @@
-import { event, c2d, init as c2dInit } from "./util";
+import { event, context } from "./util";
 import reversi from "./reversi";
 
 export default class {
-    private reversi: reversi;
-    constructor() {
-        this.reversi = new reversi(8, 8);
-    }
-    public init() {
-        c2dInit();
+    private reversi?: reversi;
+    constructor() {}
+    public init(canvasId: string) {
+        context.init(canvasId);
         event.init();
         event.removeMouseDownEvents();
+        this.reversi = new reversi(context.c2d, 8, 8);
         this.reversi.setState([
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
@@ -22,16 +21,16 @@ export default class {
         ]);
 
         const animation = () => {
-            if (!c2d) return;
-            c2d.fillBackground("#004E2D");
-            this.reversi.draw();
+            if (!context.c2d) return;
+            context.c2d.fillBackground("#004E2D");
+            this.reversi?.draw();
             requestAnimationFrame(animation);
         };
         requestAnimationFrame(animation);
     }
     public getPositionByMouseDown(listener: (obj: {x: number, y: number}) => any) {
         event.addMouseDownEvent((e: MouseEvent) => {
-            const pos = this.reversi.getPositionByScreenXY(e.offsetX, e.offsetY);
+            const pos = this.reversi?.getPositionByScreenXY(e.offsetX, e.offsetY);
             if (pos) {
                 listener(pos);
             }
