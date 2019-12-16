@@ -357,17 +357,19 @@ impl Handler<GetPlayer> for Server {
 }
 
 #[derive(Message)]
+#[rtype(bool)]
 pub struct RegistPlayer {
     pub room: String,
     pub id: usize,
     pub player: Player,
 }
 impl Handler<RegistPlayer> for Server {
-    type Result = ();
+    type Result = bool;
 
     fn handle(&mut self, msg: RegistPlayer, _: &mut Context<Self>) -> Self::Result {
+        let mut result = false;
         if let Some(reversi) = self.reversies.get(&msg.room) {
-            match msg.player {
+            result = match msg.player {
                 Player::One => {
                     if reversi.player1_id.get() == 0 && msg.id != reversi.player2_id.get() {
                         reversi.player1_id.set(msg.id);
@@ -380,6 +382,9 @@ impl Handler<RegistPlayer> for Server {
                             .to_string(),
                             0,
                         );
+                        true
+                    } else {
+                        false
                     }
                 }
                 Player::Two => {
@@ -394,10 +399,14 @@ impl Handler<RegistPlayer> for Server {
                             .to_string(),
                             0,
                         );
+                        true
+                    } else {
+                        false
                     }
                 }
             }
         }
+        result
     }
 }
 

@@ -20,6 +20,8 @@ interface states {
     reversi?: reversi,
     player1?: String,
     player2?: String,
+    isPlayer1?: boolean,
+    isPlayer2?: boolean,
 }
 
 class Game extends React.Component<props, states> {
@@ -31,6 +33,8 @@ class Game extends React.Component<props, states> {
             reversi: new reversi(),
             player1: "",
             player2: "",
+            isPlayer1: false,
+            isPlayer2: false,
         }
         this.props.wsClient.onmessage = (e) => { this.onMessage(e); };
         this.props.wsClient.send("/members");
@@ -64,6 +68,14 @@ class Game extends React.Component<props, states> {
                 case 'registered_player2' :{
                     this.setState({ player2: json.data });
                     break;
+                }
+                case 'registered_you': {
+                    this.setState({ isPlayer1: false, isPlayer2: false });
+                    if (json.data === 1) {
+                        this.setState({ isPlayer1: true });
+                    } else if (json.data === 2) {
+                        this.setState({ isPlayer2: true });
+                    }
                 }
                 case 'player' :{
                     if (json.sub_cmd === 'get') {
@@ -101,12 +113,32 @@ class Game extends React.Component<props, states> {
     start() {
         this.props.wsClient.send("/start");
     }
+    p1() {
+        const name = (() => {
+            if (this.state.isPlayer1) {
+                return "You";
+            } else {
+                return this.state.player1;
+            }
+        })();
+        return (<Col>p1 : {name ? name : <Button onClick={() => this.registPlayer(1)}>regist</Button>}</Col>);
+    }
+    p2() {
+        const name = (() => {
+            if (this.state.isPlayer2) {
+                return "You";
+            } else {
+                return this.state.player2;
+            }
+        })();
+        return (<Col>p2 : {name ? name : <Button onClick={() => this.registPlayer(2)}>regist</Button>}</Col>);
+    }
     render() {
         return (
             <Container>
                 <Row>
-                    <Col>p1 : {this.state.player1 ? this.state.player1 : <Button onClick={() => this.registPlayer(1)}>regist</Button>}</Col>
-                    <Col>p2 : {this.state.player2 ? this.state.player2 : <Button onClick={() => this.registPlayer(2)}>regist</Button>}</Col>
+                    {this.p1()}
+                    {this.p2()}
                     <Col><Button color="primary" onClick={() => this.start()}>start</Button></Col>
                 </Row>
                 <Row style={{ paddingTop: "10px" }}>

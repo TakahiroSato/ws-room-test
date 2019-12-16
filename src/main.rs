@@ -246,11 +246,25 @@ impl WsSession {
                         .wait(ctx);
                 }
                 "regist" => {
-                    self.addr.do_send(server::RegistPlayer {
+                    self.addr.send(server::RegistPlayer {
                         room: self.room.clone(),
                         id: self.id,
-                        player: p,
-                    });
+                        player: p.clone(),
+                    }).into_actor(self)
+                    .then(move |res, _, ctx| {
+                        match res {
+                            Ok(r) => {
+                                if r {
+                                    ctx.text(json!({
+                                        "cmd": "registered_you",
+                                        "data": p.clone() as usize,
+                                    }).to_string());
+                                }
+                            }
+                            _ => println!("Something is wrong"),
+                        }
+                        fut::ok(())
+                    }).wait(ctx);
                 }
                 _ => println!("command required"),
             }
