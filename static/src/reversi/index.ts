@@ -9,17 +9,6 @@ export default class {
         event.init();
         event.removeMouseDownEvents();
         this.reversi = new reversi(context.c2d, 8, 8);
-        this.reversi.setState([
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 2, 0, 0, 0],
-            [0, 0, 0, 2, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0]
-        ]);
-
         const animation = () => {
             if (!context.c2d) return;
             context.c2d.fillBackground("#004E2D");
@@ -27,6 +16,9 @@ export default class {
             requestAnimationFrame(animation);
         };
         requestAnimationFrame(animation);
+    }
+    public setDiscs(discs: number[][]) {
+        this.reversi?.setState(discs);
     }
     public getPositionByMouseDown(listener: (obj: {x: number, y: number}) => any) {
         event.addMouseDownEvent((e: MouseEvent) => {

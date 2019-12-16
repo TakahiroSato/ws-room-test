@@ -256,6 +256,26 @@ impl WsSession {
             }
         }
     }
+    fn put_disc(&mut self, v: Vec<&str>, ctx: &mut ws::WebsocketContext<Self>) {
+        if v.len() == 3 {
+            let f = |str:&str| -> bool {
+                match str.parse::<usize>() {
+                    Ok(_) => true,
+                    Err(_) => false,
+                }
+            };
+            if f(v[1]) && f(v[2]) {
+                let (x, y): (usize, usize) = (v[1].parse().unwrap(), v[2].parse().unwrap());
+                self.addr.do_send(server::PutDisc {
+                    room: self.room.clone(),
+                    id: self.id,
+                    x, y
+                });
+            } else {
+                ctx.text("invalid parameter");
+            }
+        }
+    }
 }
 
 /// WebSocket message handler
@@ -274,7 +294,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
                 let m = text.trim();
                 // we check for /sss type of messages
                 if m.starts_with('/') {
-                    let v: Vec<&str> = m.splitn(2, ' ').collect();
+                    let v: Vec<&str> = m.split_whitespace().collect();
                     match v[0] {
                         "/room" => self.room(ctx),
                         "/list" => self.list(ctx),
@@ -284,6 +304,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsSession {
                         "/start" => self.start(ctx),
                         "/player1" => self.player(v, server::Player::One, ctx),
                         "/player2" => self.player(v, server::Player::Two, ctx),
+                        "/put_disc" => self.put_disc(v, ctx),
                         _ => ctx.text(format!("!!! unknown command: {:?}", m)),
                     }
                 } else {

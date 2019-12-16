@@ -115,10 +115,27 @@ impl Server {
         for (_, reversi) in self.reversies.iter() {
             if reversi.player1_id.get() == id {
                 reversi.player1_id.set(0);
+                reversi.end();
             }
             if reversi.player2_id.get() == id {
                 reversi.player2_id.set(0);
+                reversi.end();
             }
+        }
+    }
+
+    fn send_reversi_state(&self, room: &str) {
+        if let Some(reversi) = self.reversies.get(room) {
+            self.send_message(
+                room,
+                &json!({
+                    "cmd": "update_state",
+                    "state": reversi.state.clone(),
+                    "data": reversi.get_discs(),
+                })
+                .to_string(),
+                0,
+            );
         }
     }
 }
@@ -183,6 +200,7 @@ impl Handler<Disconnect> for Server {
         // send message to other users
         for room in rooms {
             self.send_message(&room, "Someone disconnected", 0);
+            self.send_reversi_state(&room)
         }
     }
 }
@@ -235,6 +253,7 @@ impl Handler<Join> for Server {
         // send message to other users
         for room in rooms {
             self.send_message(&room, "Someone disconnected", 0);
+            self.send_reversi_state(&room)
         }
 
         if self.rooms.get_mut(&name).is_none() {
@@ -304,15 +323,7 @@ impl Handler<Start> for Server {
                 return MessageResult(Err("please regeist player1 and player2".to_owned()));
             }
             reversi.init();
-            self.send_message(
-                &msg.room,
-                &json!({
-                    "cmd": "start",
-                    "data": reversi.get_states()
-                })
-                .to_string(),
-                0,
-            );
+            self.send_reversi_state(&msg.room);
             return MessageResult(Ok("success".to_owned()));
         }
         MessageResult(Err("something wrong".to_owned()))
@@ -385,6 +396,29 @@ impl Handler<RegistPlayer> for Server {
                         );
                     }
                 }
+            }
+        }
+    }
+}
+
+#[derive(Message)]
+pub struct PutDisc {
+    pub room: String,
+    pub id: usize,
+    pub x: usize,
+    pub y: usize,
+}
+impl Handler<PutDisc> for Server {
+    type Result = ();
+
+    fn handle(&mut self, msg: PutDisc, _: &mut Context<Self>) {
+        let PutDisc { room, id, x, y } = msg;
+        if let Some(reversi) = self.reversies.get(&room) {
+            match reversi.set_disc(id, x, y) {
+                Ok(_) => {
+                    self.send_reversi_state(&room);
+                }
+                Err(_) => {}
             }
         }
     }

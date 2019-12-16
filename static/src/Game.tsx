@@ -39,7 +39,7 @@ class Game extends React.Component<props, states> {
     componentDidMount() {
         this.state.reversi?.init("canvas2d");
         this.state.reversi?.getPositionByMouseDown((pos: {x: number, y: number}) => {
-            console.table(pos);
+            this.props.wsClient.send(`/put_disc ${pos.x} ${pos.y}`);
         })
     }
     onMessage(e: WebSocket.IMessageEvent) {
@@ -70,6 +70,11 @@ class Game extends React.Component<props, states> {
                         if (json.data.p === 1) this.setState({ player1: json.data.data });
                         if (json.data.p === 2) this.setState({ player2: json.data.data });
                     }
+                    break;
+                }
+                case 'update_state': {
+                    this.state.reversi?.setDiscs(json.data);
+                    break;
                 }
             }
         } else {
@@ -77,7 +82,7 @@ class Game extends React.Component<props, states> {
                 this.props.wsClient.send("/members");
                 this.updatePlayers();
             }
-            console.log(json);
+            console.log(e.data);
         }
     }
     leftRoom() {
@@ -93,16 +98,19 @@ class Game extends React.Component<props, states> {
         this.props.wsClient.send("/player1 get");
         this.props.wsClient.send("/player2 get");
     }
+    start() {
+        this.props.wsClient.send("/start");
+    }
     render() {
         return (
             <Container>
                 <Row>
                     <Col>p1 : {this.state.player1 ? this.state.player1 : <Button onClick={() => this.registPlayer(1)}>regist</Button>}</Col>
                     <Col>p2 : {this.state.player2 ? this.state.player2 : <Button onClick={() => this.registPlayer(2)}>regist</Button>}</Col>
-                    <Col><Button color="primary" onClick={() => console.log("start")}>start</Button></Col>
+                    <Col><Button color="primary" onClick={() => this.start()}>start</Button></Col>
                 </Row>
                 <Row style={{ paddingTop: "10px" }}>
-                    <canvas id="canvas2d" width="100px" height="100px"></canvas>
+                    <canvas id="canvas2d" width="60px" height="60px"></canvas>
                 </Row>
                 <Row>
                     <ListGroup>
