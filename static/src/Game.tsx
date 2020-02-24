@@ -142,7 +142,7 @@ class Game extends React.Component<props, states> {
                     <Col><Button color="primary" onClick={() => this.start()}>start</Button></Col>
                 </Row>
                 <Row style={{ paddingTop: "10px" }}>
-                    <canvas id="canvas2d" width="60px" height="60px"></canvas>
+                    <canvas id="canvas2d" width="600px" height="600px"></canvas>
                 </Row>
                 <Row>
                     <ListGroup>
